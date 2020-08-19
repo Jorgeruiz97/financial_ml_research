@@ -1,14 +1,14 @@
-name: CI/CD ML Experiment
+name: Train ML Experiment
 # This workflow is triggered on pull requests to any brach except master.
 on:
-  pull_request:
-    types: [ opened, synchronize ]
-    branches:
-    - '**-model'
+#   pull_request:
+#     types: [ opened, synchronize ]
+#     branches:
+#     - '**-model'
   workflow_dispatch:
 
 env:
-  TAG: $GITHUB_REPOSITORY:$GITHUB_RUN_ID
+  TAG: '$GITHUB_REPOSITORY:$GITHUB_RUN_ID'
 
 jobs:
   experiment:
@@ -17,30 +17,21 @@ jobs:
     steps:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout code
-      id: checkout
       uses: actions/checkout@v2
       
     - name: Build the Docker image
-      id: build
       # docker build . \
       # --rm \
       # --file Dockerfile \
       # --tag $TAG
       run: |
-        docker pull python
         printenv
     
     - name: Run unit testing
-      id: unittest
-      if: ${{ success() }}
-      run: docker images
-#      run: echo 'running unittest $GITHUB_RUN_NUMBER'
+      run: echo 'running unittest $GITHUB_RUN_NUMBER'
 
     - name: Train model and save analytics
-      id: train
-      if: ${{ success() }}
-      run: printenv
-#      run: echo 'running unittest $GITHUB_RUN_NUMBER'
+      run: echo 'training model with id of $GITHUB_RUN_NUMBER'
         
   
   
