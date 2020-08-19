@@ -37,13 +37,13 @@ jobs:
 
     - name: Train model and save analytics
       run: echo training model with id of $GITHUB_RUN_ID
-
-    - name: Post Report to Pull-Request
-      uses: peter-evans/create-or-update-comment@v1.4.2
-      with:
-        body: 'everything looks fine AUC: 99.3%'
         
-  
+    - name: Post Report to Pull-Request
+      uses: unsplash/comment-on-pr@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        msg: '# everything looks fine AUC: 99.3%'
   
   
   
