@@ -1,10 +1,10 @@
 name: Train ML Experiment
 # This workflow is triggered on pull requests to any brach except master.
 on:
-  pull_request:
-    branches:
-      - '*ml' # any branch that contains ml
-      - '*strategy' # any branch that contains strategy
+  [pull_request, workflow_dispatch]
+#     branches:
+#       - '*ml' # any branch that contains ml
+#       - '*strategy' # any branch that contains strategy
 
 env:
   TAG: 'tag'
