@@ -2,10 +2,8 @@ name: Train ML Experiment
 # This workflow is triggered on pull requests to any brach except master.
 on:
   pull_request:
-    types: [ opened, synchronize ]
     branches:
     - '**-model'
-  workflow_dispatch:
 
 env:
   TAG: 'tag'
