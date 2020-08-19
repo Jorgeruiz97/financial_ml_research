@@ -1,10 +1,12 @@
 name: Train ML Experiment
 # This workflow is triggered on pull requests to any brach except master.
 on:
-  [pull_request, workflow_dispatch]
+  pull_request:
+    types: [ edited, opened, synchronize, reopened ]
 #     branches:
 #       - '*ml' # any branch that contains ml
 #       - '*strategy' # any branch that contains strategy
+  workflow_dispatch:
 
 env:
   TAG: 'tag'
@@ -17,6 +19,8 @@ jobs:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout code
       uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
       
     - name: Build the Docker image
       # docker build . \
@@ -28,11 +32,11 @@ jobs:
     
     - name: Run unit testing
       run: |
-        echo '$GITHUB_REPOSITORY:1'
-        echo 'running unittest $GITHUB_RUN_ID'
+        echo $GITHUB_REPOSITORY:0.1
+        echo running unittest $GITHUB_RUN_NUMBER
 
     - name: Train model and save analytics
-      run: echo 'training model with id of $GITHUB_RUN_NUMBER'
+      run: echo training model with id of $GITHUB_RUN_ID
         
   
   
