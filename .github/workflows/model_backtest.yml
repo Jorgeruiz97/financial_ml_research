@@ -1,14 +1,14 @@
 name: Train ML Experiment
 # This workflow is triggered on pull requests to any brach except master.
 on:
-#   pull_request:
-#     types: [ opened, synchronize ]
-#     branches:
-#     - '**-model'
+  pull_request:
+    types: [ opened, synchronize ]
+    branches:
+    - '**-model'
   workflow_dispatch:
 
 env:
-  TAG: '$GITHUB_REPOSITORY:$GITHUB_RUN_ID'
+  TAG: 'tag'
 
 jobs:
   experiment:
@@ -28,7 +28,9 @@ jobs:
         printenv
     
     - name: Run unit testing
-      run: echo 'running unittest $GITHUB_RUN_NUMBER'
+      run: |
+        echo '$GITHUB_REPOSITORY:1'
+        echo 'running unittest $GITHUB_RUN_ID'
 
     - name: Train model and save analytics
       run: echo 'training model with id of $GITHUB_RUN_NUMBER'
