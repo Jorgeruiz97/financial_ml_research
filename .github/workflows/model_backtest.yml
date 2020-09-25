@@ -5,8 +5,6 @@ on:
     types: [ opened, synchronize, reopened ]
   workflow_dispatch:
 
-# env:
-#   TAG: 'tag'
 
 jobs:
   experiment:
@@ -21,19 +19,16 @@ jobs:
       
     - name: Build the Docker image
       run: |
-        docker build . \
-        --rm \
-        --file Dockerfile \
-        --tag $TAG
-    
+        docker build /src --rm --tag jorgeruiz97/backtestEnv:1.0
+
     - name: Run unit testing
-      run: python test.py
+      run: python src/test.py
 
     - name: Train model and save analytics
-      run: python train.py
+      run: python src/train.py
 
     - name: Train model and save analytics
-      run: python backtest.py
+      run: python src/backtest.py
         
     - name: Post Report to Pull-Request
       uses: unsplash/comment-on-pr@master
