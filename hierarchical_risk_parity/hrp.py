@@ -1,14 +1,18 @@
 import matplotlib.pyplot as mpl
 import scipy.cluster.hierarchy as sch
-import random
 import numpy as np
 import pandas as pd
 from pprint import pprint
 
 
 class HRP:
-    def __init__(self):
+    def __init__(self, returns, cluster_type='single'):
         self.name = 'hierarchical Risk Parity'
+        self.returns_cov = returns.cov()
+        self.returns_corr = returns.corr()
+        self.returns_corr_dist = self.correl_dist(self.returns_corr)
+        self.link = sch.linkage(self.returns_corr_dist, cluster_type)
+        self.weights = self.calculate_weights()
 
     # Compute the inverse-variance portfolio
     def get_ivp(self, cov, **kargs):
@@ -46,8 +50,8 @@ class HRP:
         w = pd.Series(1, index=sort_ix)
         c_items = [sort_ix]  # initialize all items in one cluster
 
+        print('cItems: \n')
         while len(c_items) > 0:
-            print('cItems: \n')
             pprint(c_items)
 
             # bi-section
@@ -65,109 +69,36 @@ class HRP:
     # A distance matrix based on correlation, where 0<=d[i,j]<=1
     # This is a proper distance metric
     def correl_dist(self, corr):
-        dist = ((1-corr)/2.)**.5  # distance matrix
+        # dist = ((1-corr)/2.)**.5  # distance matrix
+        dist = ((1-self.returns_corr)/2.)**.5  # distance matrix
         return dist
 
     # Heatmap of the correlation matrix
-    def plot_corr_matrix(self, path, corr, labels=None):
+    def plot_corr_matrix(self, path, labels=None):
+        c = self.sorted_corr
         if labels is None:
             labels = []
-        mpl.pcolor(corr)
+        mpl.pcolor(c)
         mpl.colorbar()
-        mpl.yticks(np.arange(.5, corr.shape[0]+.5), labels)
-        mpl.xticks(np.arange(.5, corr.shape[0]+.5), labels)
+        mpl.yticks(np.arange(.5, c.shape[0]+.5), labels)
+        mpl.xticks(np.arange(.5, c.shape[0]+.5), labels)
         mpl.savefig(path)
         mpl.clf()
         mpl.close()  # reset pylab
-        return
 
-    # Time series of correlated variables
-    def generate_data(self, row_len, og_assets, corr_assets, sigma1, rep=True):
-        """
-        This method returns a pandas dataframe with random returns.
+    def plot_dendogram(self, path):
+        sch.dendrogram(self.link)
+        mpl.savefig(path)
+        mpl.clf()
+        mpl.close()  # reset pylab
 
-        This function generates [og_assets] columns of random returns and then
-        picks [corr_assets] columns and duplicates those returns + a difference
-        to have correlated columns.
-        """
-        # set seed to replicate experiment
-        if rep is True:
-            np.random.seed(seed=12345)
-            random.seed(12345)
+    def calculate_weights(self):
+        sort_ix = self.get_quasi_diag(self.link)
+        sort_ix = self.returns_corr.index[sort_ix].tolist()  # recover labels
 
-        # Generate random returns between 0 and 1 using a normal distribution
-        # nobs = number of rows
-        # size0 = number of columns
-        x = np.random.normal(0, 1, size=(row_len, og_assets))
+        # ordered correlation matrix
+        self.sorted_corr = self.returns_corr.loc[sort_ix, sort_ix]  # reorder
 
-        # make an array from [0, ..., corr_assets]
-        carange = range(corr_assets)
-
-        # Pick random columns to duplicate and make extra correlated returns
-        selected_columns = [random.randint(0, og_assets - 1) for i in carange]
-
-        # generate extra returns for the correlated columns
-        z = np.random.normal(0, sigma1, size=(row_len, len(selected_columns)))
-
-        # Create a new dataframe with the selected columns to replicate
-        # Add the extra returns to make them different, but correlated.
-        y = x[:, selected_columns] + z
-
-        # column bind new df with correlated returns with original df
-        x = np.append(x, y, axis=1)
-
-        # get the number of cols and adjust for zero [0,1,2] -> [1,2,3]
-        column_names = x.shape[1]+1
-
-        # transform newly created dataframe to pandas type
-        x = pd.DataFrame(x, columns=range(1, column_names))
-
-        return x, selected_columns
-
-    def main(self):
-        # number of rows
-        row_len = 10000
-        # original number of assets
-        og_assets = 5
-        # number of assets to randomly select and generate
-        corr_assets = 5
-        # standard deviation to randomly generate correlated corr assets
-        sigma1 = .25
-
-        x, cols = self.generate_data(row_len, og_assets, corr_assets, sigma1)
-
-        # returns
-        pprint('random returns:')
-        pprint(x)
-
-        txt = 'cols selected to be duplicated and generate correlated cols'
-        print(txt, cols)
-
-        # which columns are based on what other columns
-        # Ex. [(3, 6), (4, 7)]... column 6 is based on column 3
-        dependency = [(j+1, og_assets+i) for i, j in enumerate(cols, 1)]
-        pprint(dependency)
-
-        cov, corr = x.cov(), x.corr()
-
-        # compute and plot correl matrix
-        # self.plot_corr_matrix('HRP3_corr0.png', corr, labels=corr.columns)
-
-        # cluster
-        dist = self.correl_dist(corr)
-        print('dist matrix: \n', dist)
-
-        link = sch.linkage(dist, 'single')
-
-        sch.dendrogram(link)
-
-        mpl.show()
-        sort_ix = self.get_quasi_diag(link)
-
-        sort_ix = corr.index[sort_ix].tolist()  # recover labels
-        df0 = corr.loc[sort_ix, sort_ix]  # reorder
-
-        # # 4) Capital allocation
-        # self.plot_corr_matrix('HRP3_corr1.png', df0, labels=df0.columns)
-        hrp = self.get_rec_bipart(cov, sort_ix)
-        print(hrp)
+        # Assign weight to each asset
+        capital_alloc = self.get_rec_bipart(self.returns_cov, sort_ix)
+        return capital_alloc
