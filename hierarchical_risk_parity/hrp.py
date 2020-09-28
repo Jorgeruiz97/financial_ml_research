@@ -3,12 +3,12 @@ import scipy.cluster.hierarchy as sch
 import random
 import numpy as np
 import pandas as pd
+from pprint import pprint
 
 
 class HRP:
     def __init__(self):
-        self.name = "hierarchical Risk Parity"
-        print(self.name)
+        self.name = 'hierarchical Risk Parity'
 
     # Compute the inverse-variance portfolio
     def get_ivp(self, cov, **kargs):
@@ -46,8 +46,7 @@ class HRP:
         w = pd.Series(1, index=sort_ix)
         c_items = [sort_ix]  # initialize all items in one cluster
         while len(c_items) > 0:
-            c_items = [i[j:k] for i in c_items for j, k in ((0, len(i)/2),
-                (len(i)/2, len(i))) if len(i) > 1]  # bi-section
+            c_items = [i[j:k] for i in c_items for j, k in ((0, len(i)/2), (len(i)/2, len(i))) if len(i) > 1]  # bi-section
             for i in range(0, len(c_items), 2):  # parse in pairs
                 c_items0 = c_items[i]  # cluster 1
                 c_items1 = c_items[i+1]  # cluster 2
@@ -78,38 +77,89 @@ class HRP:
         return
 
     # Time series of correlated variables
-    def generate_data(self, nobs, size0, size1, sigma1):
-        # 1) generating some uncorrelated data
-        np.random.seed(seed=12345)
-        random.seed(12345)
-        # each row is a variable
-        x = np.random.normal(0, 1, size=(nobs, size0))
-        # 2) creating correlation between the variables
-        cols = [random.randint(0, size0 - 1) for i in range(size1)]
-        y = x[:, cols]+np.random.normal(0, sigma1, size=(nobs, len(cols)))
+    def generate_data(self, row_len, og_assets, corr_assets, sigma1, rep=True):
+        """
+        This method generates returns a pandas dataframe with random returns.
+
+        This function generates [og_assets] columns of random returns and then
+        picks [corr_assets] columns and duplicates those returns + a difference
+        to have correlated columns.
+        """
+        # set seed to replicate experiment
+        if rep is True:
+            np.random.seed(seed=12345)
+            random.seed(12345)
+
+        # Generate random returns between 0 and 1 using a normal distribution
+        # nobs = number of rows
+        # size0 = number of columns
+        x = np.random.normal(0, 1, size=(row_len, og_assets))
+
+        # make an array from [0, ..., corr_assets]
+        carange = range(corr_assets)
+
+        # Pick random columns to duplicate and make extra correlated returns
+        selected_columns = [random.randint(0, og_assets - 1) for i in carange]
+
+        # generate extra returns for the correlated columns
+        z = np.random.normal(0, sigma1, size=(row_len, len(selected_columns)))
+
+        # Create a new dataframe with the selected columns to replicate
+        # Add the extra returns to make them different, but correlated.
+        y = x[:, selected_columns] + z
+
+        # column bind new df with correlated returns with original df
         x = np.append(x, y, axis=1)
-        x = pd.DataFrame(x, columns=range(1, x.shape[1]+1))
-        return x, cols
+
+        # get the number of cols and adjust for zero [0,1,2] -> [1,2,3]
+        column_names = x.shape[1]+1
+
+        # transform newly created dataframe to pandas type
+        x = pd.DataFrame(x, columns=range(1, column_names))
+
+        return x, selected_columns
 
     def main(self):
-        # 1) Generate correlated data
-        nobs, size0, size1, sigma1 = 10000, 5, 5, .25
-        x, cols = self.generate_data(nobs, size0, size1, sigma1)
+        # number of rows
+        row_len = 10000
+        # original number of assets
+        og_assets = 5
+        # number of assets to randomly select and generate
+        corr_assets = 5
+        # standard deviation to randomly generate correlated corr assets
+        sigma1 = .25
 
-        dependency = [(j+1, size0+i) for i, j in enumerate(cols, 1)]
-        print(dependency)
+        x, cols = self.generate_data(row_len, og_assets, corr_assets, sigma1)
+
+        # returns
+        pprint('random returns:')
+        pprint(x)
+
+        txt = 'cols selected to be duplicated and generate correlated cols'
+        print(txt, cols)
+
+        # which columns are based on what other columns
+        # Ex. [(3, 6), (4, 7)]... column 6 is based on column 3
+        dependency = [(j+1, og_assets+i) for i, j in enumerate(cols, 1)]
+        pprint(dependency)
 
         cov, corr = x.cov(), x.corr()
-        # 2) compute and plot correl matrix
-        self.plot_corr_matrix('HRP3_corr0.png', corr, labels=corr.columns)
-        # 3) cluster
+
+        # compute and plot correl matrix
+        # self.plot_corr_matrix('HRP3_corr0.png', corr, labels=corr.columns)
+
+        # cluster
         dist = self.correl_dist(corr)
+        print('dist matrix: \n', dist)
+
         link = sch.linkage(dist, 'single')
-        sort_ix = self.get_quasi_diag(link)
-        sort_ix = corr.index[sort_ix].tolist()  # recover labels
-        df0 = corr.loc[sort_ix, sort_ix]  # reorder
-        # 4) Capital allocation
-        self.plot_corr_matrix('HRP3_corr1.png', df0, labels=df0.columns)
-        hrp = self.get_rec_bipart(cov, sort_ix)
-        print(hrp)
-        return
+        print(link)
+        # sort_ix = self.get_quasi_diag(link)
+
+        # sort_ix = corr.index[sort_ix].tolist()  # recover labels
+        # df0 = corr.loc[sort_ix, sort_ix]  # reorder
+
+        # # 4) Capital allocation
+        # self.plot_corr_matrix('HRP3_corr1.png', df0, labels=df0.columns)
+        # hrp = self.get_rec_bipart(cov, sort_ix)
+        # print(hrp)
