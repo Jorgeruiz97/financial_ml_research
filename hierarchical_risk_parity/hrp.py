@@ -45,8 +45,13 @@ class HRP:
     def get_rec_bipart(self, cov, sort_ix):
         w = pd.Series(1, index=sort_ix)
         c_items = [sort_ix]  # initialize all items in one cluster
+
         while len(c_items) > 0:
-            c_items = [i[j:k] for i in c_items for j, k in ((0, len(i)/2), (len(i)/2, len(i))) if len(i) > 1]  # bi-section
+            print('cItems: \n')
+            pprint(c_items)
+
+            # bi-section
+            c_items = [i[j:k] for i in c_items for j, k in ((0, int(len(i)/2)), (int(len(i)/2), len(i))) if len(i) > 1]
             for i in range(0, len(c_items), 2):  # parse in pairs
                 c_items0 = c_items[i]  # cluster 1
                 c_items1 = c_items[i+1]  # cluster 2
@@ -79,7 +84,7 @@ class HRP:
     # Time series of correlated variables
     def generate_data(self, row_len, og_assets, corr_assets, sigma1, rep=True):
         """
-        This method generates returns a pandas dataframe with random returns.
+        This method returns a pandas dataframe with random returns.
 
         This function generates [og_assets] columns of random returns and then
         picks [corr_assets] columns and duplicates those returns + a difference
@@ -153,13 +158,16 @@ class HRP:
         print('dist matrix: \n', dist)
 
         link = sch.linkage(dist, 'single')
-        print(link)
-        # sort_ix = self.get_quasi_diag(link)
 
-        # sort_ix = corr.index[sort_ix].tolist()  # recover labels
-        # df0 = corr.loc[sort_ix, sort_ix]  # reorder
+        sch.dendrogram(link)
+
+        mpl.show()
+        sort_ix = self.get_quasi_diag(link)
+
+        sort_ix = corr.index[sort_ix].tolist()  # recover labels
+        df0 = corr.loc[sort_ix, sort_ix]  # reorder
 
         # # 4) Capital allocation
         # self.plot_corr_matrix('HRP3_corr1.png', df0, labels=df0.columns)
-        # hrp = self.get_rec_bipart(cov, sort_ix)
-        # print(hrp)
+        hrp = self.get_rec_bipart(cov, sort_ix)
+        print(hrp)
